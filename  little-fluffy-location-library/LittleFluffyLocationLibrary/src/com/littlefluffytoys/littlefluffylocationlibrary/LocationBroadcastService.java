@@ -24,9 +24,10 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
 import com.google.android.gms.common.GooglePlayServicesClient.OnConnectionFailedListener;
-import com.google.android.gms.location.LocationClient;
+import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
 
 import android.annotation.TargetApi;
 import android.app.AlarmManager;
@@ -60,14 +61,16 @@ public class LocationBroadcastService extends Service implements ConnectionCallb
     
     private static final String TAG = "LocationBroadcastService"; 
     
-	private LocationClient mLocationClient;
+	//private LocationClient mLocationClient;
+    private GoogleApiClient mGoogleApiClient;
 	private LocationRequest mLocationRequest;
 
 	
 	@Override
 	public void onCreate() {
 		super.onCreate();
-		mLocationClient = new LocationClient(getApplicationContext(), this, this);
+		//mLocationClient = new LocationClient(getApplicationContext(), this, this);
+		mGoogleApiClient = new GoogleApiClient.Builder(this).addApi(LocationServices.API).build();
 	}
 	
     @Override
@@ -169,7 +172,8 @@ public class LocationBroadcastService extends Service implements ConnectionCallb
 	    if (LocationLibraryConstants.SUPPORTS_GINGERBREAD) {
 	    	if (GooglePlayServicesUtil.isGooglePlayServicesAvailable(getApplicationContext()) == ConnectionResult.SUCCESS) {
 	            if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": Force a single location update using Google GMS Location, as current location is beyond the oldest location permitted");
-	    		mLocationClient.connect(); // this will cause an onConnected() or onConnectionFailed() callback 
+	    		//mLocationClient.connect(); 
+	            mGoogleApiClient.connect();// this will cause an onConnected() or onConnectionFailed() callback 
 	    		return true;
 		    }
 		    else {
@@ -274,7 +278,8 @@ public class LocationBroadcastService extends Service implements ConnectionCallb
         mLocationRequest.setPriority(LocationLibrary.useFineAccuracyForRequests ? LocationRequest.PRIORITY_HIGH_ACCURACY : LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
         mLocationRequest.setInterval(4000);
         mLocationRequest.setFastestInterval(1000);
-        mLocationClient.requestLocationUpdates(mLocationRequest, this);
+        //mLocationClient.requestLocationUpdates(mLocationRequest, this);
+        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
 	}
 
 	/**
@@ -283,7 +288,8 @@ public class LocationBroadcastService extends Service implements ConnectionCallb
 	public void onDisconnected()
 	{
         if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": onDisconnected (Google GMS Location)");
-        mLocationClient.removeLocationUpdates(this);// Avoid crashes
+       // mLocationClient.removeLocationUpdates(this);
+        LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);// Avoid crashes
 	}
 
 	/**
@@ -292,7 +298,8 @@ public class LocationBroadcastService extends Service implements ConnectionCallb
 	public void onLocationChanged(Location location)
 	{
         if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": onLocationChanged (Google GMS Location)");	
-		mLocationClient.disconnect();
+		//mLocationClient.disconnect();
+        mGoogleApiClient.disconnect();
 		PassiveLocationChangedReceiver.processLocation(LocationBroadcastService.this, location, false, true);
 	}
 

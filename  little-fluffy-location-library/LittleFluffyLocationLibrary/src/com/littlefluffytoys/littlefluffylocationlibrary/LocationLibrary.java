@@ -22,7 +22,10 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
 import com.google.android.gms.common.GooglePlayServicesClient.OnConnectionFailedListener;
-import com.google.android.gms.location.LocationClient;
+
+
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationServices;
 
 import android.annotation.TargetApi;
 import android.app.AlarmManager;
@@ -73,7 +76,8 @@ public class LocationLibrary implements ConnectionCallbacks, OnConnectionFailedL
 	private static LocationLibrary mLocationLibrary;
 	private static Context mContext;
 
-	private LocationClient mLocationClient;
+	//private LocationClient mLocationClient;
+	private GoogleApiClient mGoogleApiClient;
 	
 	private static LocationLibrary getInstance(Context context) {
 		if (mLocationLibrary == null) {
@@ -159,8 +163,10 @@ public class LocationLibrary implements ConnectionCallbacks, OnConnectionFailedL
         	    if (LocationLibraryConstants.SUPPORTS_GINGERBREAD && GooglePlayServicesUtil.isGooglePlayServicesAvailable(context.getApplicationContext()) == ConnectionResult.SUCCESS) {
                     if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": initialiseLibrary: using Google GMS Location");
                     final LocationLibrary locationLibrary = getInstance(context);
-                    locationLibrary.mLocationClient = new LocationClient(context.getApplicationContext(), locationLibrary, locationLibrary);
-                    locationLibrary.mLocationClient.connect(); // this will cause an onConnected() or onConnectionFailed() callback
+                    //locationLibrary.mLocationClient = new LocationClient(context.getApplicationContext(), locationLibrary, locationLibrary);
+                   // locationLibrary.mLocationClient.connect(); 
+                    locationLibrary.mGoogleApiClient = new GoogleApiClient.Builder(context).addApi(LocationServices.API).build();
+                    locationLibrary.mGoogleApiClient.connect();// this will cause an onConnected() or onConnectionFailed() callback
         	    }
         	    else {
                     if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": initialiseLibrary: using Android AOSP location");
@@ -308,7 +314,8 @@ public class LocationLibrary implements ConnectionCallbacks, OnConnectionFailedL
 	{
         if (LocationLibrary.showDebugOutput) Log.w(LocationLibraryConstants.TAG, TAG + ": onConnectionFailed (Google GMS Location)");
 		mLocationLibrary = null;
-		mLocationClient = null;
+		//mLocationClient = null;
+		mGoogleApiClient = null;
 	}
 
 	/**
@@ -316,9 +323,12 @@ public class LocationLibrary implements ConnectionCallbacks, OnConnectionFailedL
 	 */
 	public void onConnected(Bundle arg0)
 	{
-		if (mLocationClient != null) {
-			final Location mCurrentLocation = mLocationClient.getLastLocation();
-			mLocationClient.disconnect();
+		//if (mLocationClient != null) {
+		if(mGoogleApiClient !=null){
+			//final Location mCurrentLocation = mLocationClient.getLastLocation();
+			final Location mCurrentLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+			//mLocationClient.disconnect();
+			mGoogleApiClient.disconnect();
 			if (mCurrentLocation != null) {
 				if (LocationLibrary.showDebugOutput) Log.d(TAG, "Last location lat=" + mCurrentLocation.getLatitude() + " long=" + mCurrentLocation.getLongitude());
 	            PassiveLocationChangedReceiver.processLocation(mContext, mCurrentLocation, false, false);
@@ -332,6 +342,7 @@ public class LocationLibrary implements ConnectionCallbacks, OnConnectionFailedL
 	public void onDisconnected()
 	{
 		mLocationLibrary = null;
-		mLocationClient = null;
+		mGoogleApiClient = null;
+		//mLocationClient = null;
 	}
 }
