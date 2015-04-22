@@ -22,13 +22,12 @@ import java.util.TimerTask;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
-import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
-import com.google.android.gms.common.GooglePlayServicesClient.OnConnectionFailedListener;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 
+import android.R.bool;
 import android.annotation.TargetApi;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -47,6 +46,7 @@ import android.os.IBinder;
 import android.os.Parcel;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
+import android.renderscript.RenderScript.Priority;
 import android.util.Log;
 
 /**
@@ -57,7 +57,7 @@ import android.util.Log;
  * @see AlarmService
  * @see AlarmService_Alarm
  */
-public class LocationBroadcastService extends Service implements ConnectionCallbacks, OnConnectionFailedListener, LocationListener {
+public class LocationBroadcastService extends Service implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
     
     private static final String TAG = "LocationBroadcastService"; 
     
@@ -70,7 +70,7 @@ public class LocationBroadcastService extends Service implements ConnectionCallb
 	public void onCreate() {
 		super.onCreate();
 		//mLocationClient = new LocationClient(getApplicationContext(), this, this);
-		mGoogleApiClient = new GoogleApiClient.Builder(this).addApi(LocationServices.API).build();
+		mGoogleApiClient = new GoogleApiClient.Builder(this).addApi(LocationServices.API).addConnectionCallbacks(this).addOnConnectionFailedListener(this).build();
 	}
 	
     @Override
@@ -159,6 +159,83 @@ public class LocationBroadcastService extends Service implements ConnectionCallb
         return mBinder;
     }
     
+    
+    public static void updateRequiredLocation(int minTime, Boolean turnOnUpdate,Context context){
+    	LocationBroadcastService msBroadcastService = new LocationBroadcastService();
+    	msBroadcastService.updateLocationforAccuracy(minTime, turnOnUpdate,context);
+    }
+    
+    @TargetApi(Build.VERSION_CODES.GINGERBREAD)
+	public void updateLocationforAccuracy(int minTime,Boolean turnOnUpdate,Context context){
+        final LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        final Criteria criteria = new Criteria();
+        criteria.setAccuracy(!LocationLibrary.useFineAccuracyForRequests && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) ? Criteria.ACCURACY_COARSE : Criteria.ACCURACY_FINE);
+	    if (LocationLibraryConstants.SUPPORTS_GINGERBREAD) {
+	    	if (GooglePlayServicesUtil.isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS) {
+	            if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": For Accuracy location update using Google GMS Location, as current location is beyond the oldest location permitted");
+	    		if(turnOnUpdate){
+	    			if(mGoogleApiClient!=null){
+	            LocationRequest mLocationRequest = new LocationRequest();
+	    		mLocationRequest.setInterval(minTime);
+	    		mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+	    		LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+	    		}else{
+	    			mGoogleApiClient = new GoogleApiClient.Builder(this).addApi(LocationServices.API).addConnectionCallbacks(this).addOnConnectionFailedListener(this).build();
+	    			mGoogleApiClient.connect();
+	    		}
+	    		}else{
+	    			LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
+	    		
+	    		}
+		    }
+		    else {
+	            if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ":Location update for required accuracyusing Android AOSP location, as current location is beyond the oldest location permitted");
+	            // just request a single update. The passive provider will pick it up.
+	            final Intent receiver = new Intent(context, PassiveLocationChangedReceiver.class).addCategory(LocationLibraryConstants.INTENT_CATEGORY_ONE_SHOT_UPDATE);
+	            final PendingIntent oneshotReceiver = PendingIntent.getBroadcast(context, 0, receiver, PendingIntent.FLAG_UPDATE_CURRENT);
+	            if(turnOnUpdate){
+	            try {
+	                locationManager.requestLocationUpdates(minTime, 0, criteria, oneshotReceiver);
+	               // if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": schedule timer to kill locationlistener in 30 seconds");
+	                /*new Timer().schedule(new TimerTask(){
+	                    public void run(){
+	                        try {
+	                            if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": remove updates after 30 seconds");
+	                            locationManager.removeUpdates(oneshotReceiver);
+	                        }
+	                        catch (Exception e) {
+	                            e.printStackTrace();
+	                        }
+	                        stopSelf();
+	                    }}, 30000);
+	                *///return true; // don't stop the service, allow the timer to do that
+	            }
+	            catch (IllegalArgumentException ex) {
+	                // thrown if there are no providers, e.g. GPS is off
+	                if (LocationLibrary.showDebugOutput) Log.w(LocationLibraryConstants.TAG, TAG + ": IllegalArgumentException during call to locationManager.requestSingleUpdate - probable cause is that all location providers are off. Details: " + ex.getMessage());
+	            }
+	            }else{
+	            	locationManager.removeUpdates(oneshotReceiver);
+	            }
+		    }
+        }
+        else { // pre-Gingerbread
+            if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": Force location updates (pre-Gingerbread), as current location is beyond the oldest location permitted");
+            // one-shot not available pre-Gingerbread, so start updates, and when one is received, stop updates.
+            final String provider = locationManager.getBestProvider(criteria, true);
+            if (provider != null && turnOnUpdate) {
+                locationManager.requestLocationUpdates(provider, minTime, 0, preGingerbreadUpdatesListener, LocationBroadcastService.this.getMainLooper());
+                // don't stop the service, the callback will do that
+//                return true;
+            }else if(!turnOnUpdate){
+            	locationManager.removeUpdates(preGingerbreadUpdatesListener);
+            }
+        }
+        // stop the service
+//        return false;
+
+    }
+    
     /**
      * 
      * @return true if the service should stay awake, false if not
@@ -168,11 +245,10 @@ public class LocationBroadcastService extends Service implements ConnectionCallb
         final LocationManager locationManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
         final Criteria criteria = new Criteria();
         criteria.setAccuracy(!LocationLibrary.useFineAccuracyForRequests && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) ? Criteria.ACCURACY_COARSE : Criteria.ACCURACY_FINE);
-
 	    if (LocationLibraryConstants.SUPPORTS_GINGERBREAD) {
 	    	if (GooglePlayServicesUtil.isGooglePlayServicesAvailable(getApplicationContext()) == ConnectionResult.SUCCESS) {
 	            if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": Force a single location update using Google GMS Location, as current location is beyond the oldest location permitted");
-	    		//mLocationClient.connect(); 
+	    		//mLocationClient.connect();
 	            mGoogleApiClient.connect();// this will cause an onConnected() or onConnectionFailed() callback 
 	    		return true;
 		    }
@@ -302,7 +378,7 @@ public class LocationBroadcastService extends Service implements ConnectionCallb
         mGoogleApiClient.disconnect();
 		PassiveLocationChangedReceiver.processLocation(LocationBroadcastService.this, location, false, true);
 	}
-
+	
 	/**
 	 * Google GMS Location
 	 */
@@ -322,5 +398,10 @@ public class LocationBroadcastService extends Service implements ConnectionCallb
 	 */
 	public void onStatusChanged(String provider, int status, Bundle extras)
 	{
+	}
+
+	public void onConnectionSuspended(int cause) {
+		// TODO Auto-generated method stub
+		
 	}
 }

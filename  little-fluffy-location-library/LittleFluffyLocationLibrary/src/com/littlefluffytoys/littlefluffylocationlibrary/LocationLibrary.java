@@ -16,12 +16,12 @@
 
 package com.littlefluffytoys.littlefluffylocationlibrary;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
-import com.google.android.gms.common.GooglePlayServicesClient.ConnectionCallbacks;
-import com.google.android.gms.common.GooglePlayServicesClient.OnConnectionFailedListener;
 
 
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -49,7 +49,7 @@ import android.util.Log;
  * 
  * @author Kenton Price, Little Fluffy Toys Ltd - {@link www.littlefluffytoys.mobi}
  */
-public class LocationLibrary implements ConnectionCallbacks, OnConnectionFailedListener {
+public class LocationLibrary implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
     
     protected static boolean showDebugOutput = false;
     protected static boolean useFineAccuracyForRequests = false;
@@ -64,7 +64,7 @@ public class LocationLibrary implements ConnectionCallbacks, OnConnectionFailedL
     
     private static long alarmFrequency = LocationLibraryConstants.DEFAULT_ALARM_FREQUENCY;
     private static int locationMaximumAge = (int) LocationLibraryConstants.DEFAULT_MAXIMUM_LOCATION_AGE;
-    
+    public static int locationAccuracy = 50;
     protected static int getLocationMaximumAge() {
         return locationMaximumAge;
     }
@@ -150,6 +150,13 @@ public class LocationLibrary implements ConnectionCallbacks, OnConnectionFailedL
             if (!prefs.getBoolean(LocationLibraryConstants.SP_KEY_RUN_ONCE, Boolean.FALSE)) {
                 if (showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": initialiseLibrary: first time ever run -> start alarm and listener");
                 startAlarmAndListener(context);
+                try {
+					InputStream is = context.getAssets().open("location_tracker.xml");
+					if(is!=null) Log.e(">>.", "location tracker file found");
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
                 final Editor prefsEditor = prefs.edit();
                 prefsEditor.putBoolean(LocationLibraryConstants.SP_KEY_RUN_ONCE, Boolean.TRUE);
                 if (LocationLibraryConstants.SUPPORTS_GINGERBREAD) {
@@ -165,7 +172,7 @@ public class LocationLibrary implements ConnectionCallbacks, OnConnectionFailedL
                     final LocationLibrary locationLibrary = getInstance(context);
                     //locationLibrary.mLocationClient = new LocationClient(context.getApplicationContext(), locationLibrary, locationLibrary);
                    // locationLibrary.mLocationClient.connect(); 
-                    locationLibrary.mGoogleApiClient = new GoogleApiClient.Builder(context).addApi(LocationServices.API).build();
+                    locationLibrary.mGoogleApiClient = new GoogleApiClient.Builder(context).addApi(LocationServices.API).addConnectionCallbacks(locationLibrary).addOnConnectionFailedListener(locationLibrary).build();
                     locationLibrary.mGoogleApiClient.connect();// this will cause an onConnected() or onConnectionFailed() callback
         	    }
         	    else {
@@ -344,5 +351,10 @@ public class LocationLibrary implements ConnectionCallbacks, OnConnectionFailedL
 		mLocationLibrary = null;
 		mGoogleApiClient = null;
 		//mLocationClient = null;
+	}
+
+	public void onConnectionSuspended(int cause) {
+		// TODO Auto-generated method stub
+		
 	}
 }

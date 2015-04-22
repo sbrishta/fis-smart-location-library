@@ -38,6 +38,8 @@ import android.util.Log;
 public class PassiveLocationChangedReceiver extends BroadcastReceiver {
   
   protected static String TAG = "PassiveLocationChangedReceiver";
+  private static int minTime = 0;
+  private static int minDistance = 0;
   
   /**
    * When a new location is received, extract it from the Intent and use
@@ -94,7 +96,7 @@ public class PassiveLocationChangedReceiver extends BroadcastReceiver {
       
       final float thisLat = ((int) (location.getLatitude() * 1000000)) / 1000000f;
       final float thisLong =  ((int) (location.getLongitude() * 1000000)) / 1000000f;
-      final int thisAccuracy = (int) location.getAccuracy();
+      int thisAccuracy = (int) location.getAccuracy();
       long thisTime = location.getTime();
       if (thisTime == 0) {
           thisTime = System.currentTimeMillis();
@@ -112,6 +114,7 @@ public class PassiveLocationChangedReceiver extends BroadcastReceiver {
               if (distanceBetweenInMetres < thisAccuracy)
               {
                   usePreviousReading = true;
+                  thisAccuracy = lastAccuracy;
               }
           }
       }
@@ -127,15 +130,29 @@ public class PassiveLocationChangedReceiver extends BroadcastReceiver {
           prefsEditor.putInt(LocationLibraryConstants.SP_KEY_LAST_LOCATION_UPDATE_ACCURACY, thisAccuracy);
           prefsEditor.putString(LocationLibraryConstants.SP_KEY_LAST_LOCATION_UPDATE_PROVIDER, thisProvider);
           if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": Storing location update, lat=" + thisLat + " long=" + thisLong + " accuracy=" + thisAccuracy + " time=" + LocationInfo.formatTimestampForDebug(thisTime));
+          
       }
       else {
           if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": Storing location update, less accurate so reusing prior location - time=" + LocationInfo.formatTimestampForDebug(thisTime));
+          //LocationBroadcastService.updateRequiredLocation(minTime, minDistance)
       }
       if (LocationLibraryConstants.SUPPORTS_GINGERBREAD) {
     	  prefsEditor.apply();
       }
       else {
           prefsEditor.commit();
+      }
+      
+      if(thisAccuracy<LocationLibrary.locationAccuracy){
+    	  minTime=minTime+2;
+      LocationBroadcastService.updateRequiredLocation(minTime, true,context);
+      }else if(thisAccuracy<LocationLibrary.locationAccuracy && minTime>=LocationLibrary.getAlarmFrequency()) {
+    	  minTime = 0;
+    	  LocationBroadcastService.updateRequiredLocation(minTime, false,context);
+      }
+      if(thisAccuracy<=LocationLibrary.locationAccuracy){
+    	  minTime = 0;
+    	  LocationBroadcastService.updateRequiredLocation(minTime, false, context);
       }
 
       if (LocationLibrary.broadcastEveryLocationUpdate) {
