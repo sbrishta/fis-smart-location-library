@@ -143,14 +143,14 @@ public class PassiveLocationChangedReceiver extends BroadcastReceiver {
           prefsEditor.commit();
       }
       
-      if(thisAccuracy<LocationLibrary.locationAccuracy){
+      if(thisAccuracy>LocationLibrary.locationAccuracy){
     	  minTime=minTime+2;
       LocationBroadcastService.updateRequiredLocation(minTime, true,context);
-      }else if(thisAccuracy<LocationLibrary.locationAccuracy && minTime>=LocationLibrary.getAlarmFrequency()) {
+      }else if(thisAccuracy>LocationLibrary.locationAccuracy && minTime>=LocationLibrary.getAlarmFrequency()) {
     	  minTime = 0;
     	  LocationBroadcastService.updateRequiredLocation(minTime, false,context);
       }
-      if(thisAccuracy<=LocationLibrary.locationAccuracy){
+      if(thisAccuracy<=LocationLibrary.locationAccuracy && minTime>0){
     	  minTime = 0;
     	  LocationBroadcastService.updateRequiredLocation(minTime, false, context);
       }

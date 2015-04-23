@@ -62,13 +62,14 @@ public class LocationBroadcastService extends Service implements GoogleApiClient
     private static final String TAG = "LocationBroadcastService"; 
     
 	//private LocationClient mLocationClient;
-    private GoogleApiClient mGoogleApiClient;
+    GoogleApiClient mGoogleApiClient;
 	private LocationRequest mLocationRequest;
 
 	
 	@Override
 	public void onCreate() {
 		super.onCreate();
+		Log.d(TAG, "inside on create");
 		//mLocationClient = new LocationClient(getApplicationContext(), this, this);
 		mGoogleApiClient = new GoogleApiClient.Builder(this).addApi(LocationServices.API).addConnectionCallbacks(this).addOnConnectionFailedListener(this).build();
 	}
@@ -173,17 +174,16 @@ public class LocationBroadcastService extends Service implements GoogleApiClient
 	    if (LocationLibraryConstants.SUPPORTS_GINGERBREAD) {
 	    	if (GooglePlayServicesUtil.isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS) {
 	            if (LocationLibrary.showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": For Accuracy location update using Google GMS Location, as current location is beyond the oldest location permitted");
-	    		if(turnOnUpdate){
+	    		
 	    			if(mGoogleApiClient!=null){
+	    			
+	    				if(turnOnUpdate){
 	            LocationRequest mLocationRequest = new LocationRequest();
 	    		mLocationRequest.setInterval(minTime);
 	    		mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 	    		LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
-	    		}else{
-	    			mGoogleApiClient = new GoogleApiClient.Builder(this).addApi(LocationServices.API).addConnectionCallbacks(this).addOnConnectionFailedListener(this).build();
-	    			mGoogleApiClient.connect();
-	    		}
-	    		}else{
+	    				}
+	    		else{
 	    			LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
 	    		
 	    		}
@@ -230,6 +230,7 @@ public class LocationBroadcastService extends Service implements GoogleApiClient
             }else if(!turnOnUpdate){
             	locationManager.removeUpdates(preGingerbreadUpdatesListener);
             }
+        }
         }
         // stop the service
 //        return false;
