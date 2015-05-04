@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.fis.smartlocationmanager;
+package com.fis.smartlocationlibrary;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;

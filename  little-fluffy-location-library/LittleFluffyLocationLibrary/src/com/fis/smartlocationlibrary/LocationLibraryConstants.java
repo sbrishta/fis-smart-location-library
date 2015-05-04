@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.fis.smartlocationmanager;
+package com.fis.smartlocationlibrary;
 
 import android.app.AlarmManager;
 
@@ -33,7 +33,7 @@ public class LocationLibraryConstants {
   public static String getLocationChangedTickerBroadcastAction() {
       return LocationLibrary.broadcastPrefix + LOCATION_CHANGED_TICKER_BROADCAST_ACTION;
   }
-  public static final String LOCATION_BROADCAST_EXTRA_LOCATIONINFO = "com.fis.smartlocationmanager.fislocationlibrary.LocationInfo";
+  public static final String LOCATION_BROADCAST_EXTRA_LOCATIONINFO = "com.fis.smartlocationlibrary.LocationInfo";
 
   protected static final int LOCATION_BROADCAST_REQUEST_CODE_SINGLE_SHOT = 1;
   protected static final int LOCATION_BROADCAST_REQUEST_CODE_REPEATING_ALARM = 2;

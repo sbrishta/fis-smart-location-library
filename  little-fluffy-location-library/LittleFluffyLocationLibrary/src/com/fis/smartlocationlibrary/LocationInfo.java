@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.fis.smartlocationmanager;
+package com.fis.smartlocationlibrary;
 
 import java.io.Serializable;
 
