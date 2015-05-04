@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 
-package com.littlefluffytoys.littlefluffylocationlibrary;
+package com.fis.smartlocationmanager;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlPullParserFactory;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
@@ -34,6 +38,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.content.res.Resources;
+import android.content.res.XmlResourceParser;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.Build;
@@ -130,6 +136,7 @@ public class LocationLibrary implements GoogleApiClient.ConnectionCallbacks, Goo
         if (showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": stopAlarmAndListener completed");
     }
     
+       
     /**
      * To use this library, call initialiseLibrary from your Application's onCreate method,
      * having set up your manifest as detailed in the project documentation.
@@ -150,13 +157,6 @@ public class LocationLibrary implements GoogleApiClient.ConnectionCallbacks, Goo
             if (!prefs.getBoolean(LocationLibraryConstants.SP_KEY_RUN_ONCE, Boolean.FALSE)) {
                 if (showDebugOutput) Log.d(LocationLibraryConstants.TAG, TAG + ": initialiseLibrary: first time ever run -> start alarm and listener");
                 startAlarmAndListener(context);
-                try {
-					InputStream is = context.getAssets().open("location_tracker.xml");
-					if(is!=null) Log.e(">>.", "location tracker file found");
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
                 final Editor prefsEditor = prefs.edit();
                 prefsEditor.putBoolean(LocationLibraryConstants.SP_KEY_RUN_ONCE, Boolean.TRUE);
                 if (LocationLibraryConstants.SUPPORTS_GINGERBREAD) {

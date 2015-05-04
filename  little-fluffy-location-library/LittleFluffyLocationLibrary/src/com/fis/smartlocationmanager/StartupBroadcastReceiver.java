@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.littlefluffytoys.littlefluffylocationlibrary;
+package com.fis.smartlocationmanager;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
